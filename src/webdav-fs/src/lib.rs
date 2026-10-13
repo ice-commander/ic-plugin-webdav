@@ -103,4 +103,21 @@ mod tests {
             IC_ERR_HOST_UNKNOWN
         );
     }
+
+    #[test]
+    fn a_failure_is_handed_over_once_and_then_forgotten() {
+        let port = std::net::TcpListener::bind("127.0.0.1:0")
+            .unwrap()
+            .local_addr()
+            .unwrap()
+            .port();
+        let settings = format!(r#"{{"url":"http://127.0.0.1:{port}/"}}"#);
+        let handle = mount::open(settings.as_ptr(), settings.len() as u64, std::ptr::null_mut());
+        assert!(!handle.is_null());
+        assert!(mount::last_error(handle).is_null(), "nothing has failed yet");
+        assert_eq!(mount::list(handle, c"/".as_ptr()).count, 0);
+        assert!(!mount::last_error(handle).is_null(), "the failed listing gave no reason");
+        assert!(mount::last_error(handle).is_null(), "the same failure was reported twice");
+        mount::close(handle);
+    }
 }
